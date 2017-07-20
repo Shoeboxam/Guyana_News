@@ -1,0 +1,6 @@
+/__pycache__/
+*.pyc
+keyfile.txt
+.idea/
+data/
+Guyana_key.xlsx
