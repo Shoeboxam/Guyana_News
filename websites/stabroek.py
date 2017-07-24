@@ -1,11 +1,17 @@
 from lxml import html
 import requests
 
+import sqlite3
+
+connection = sqlite3.connect('Newspaper_Records.db')
+cursor = connection.cursor()
+cursor.execute('CREATE TABLE IF NOT EXISTS stabroek_days (day TEXT)')
+
 archive_url = 'https://www.stabroeknews.com/archive/'
 
 
 # Returns the urls of every day in the archive
-def get_day_urls(url):
+def get_day_urls(url, memoize=True):
     page_archive = requests.get(url)
     tree = html.fromstring(page_archive.content)
 
@@ -19,14 +25,20 @@ def get_day_urls(url):
         url = day_option.get('value')
 
         # Filter out the placeholder option
-        if url != '\\"\\"':
-            day_urls.append(url)
+        if url == '\\"\\"':
+            continue
+
+        record = cursor.execute('SELECT 1 FROM stabroek_days WHERE key = ' + url)
+        if cursor.execute('SELECT 1 FROM stabroek_days WHERE key = ' + url):
+            record.
+
+        day_urls.append(url)
 
     return day_urls
 
 
 # Returns the urls of every article in a day
-def get_article_urls(url):
+def get_article_urls(url, memoize=True):
     page_articles = requests.get(url)
     tree = html.fromstring(page_articles.content)
 
@@ -42,6 +54,11 @@ def get_article_urls(url):
 
 # Create the day list
 day_urls = get_day_urls(archive_url)
+# Save the list to a file
+
+urlfile = open('./data/day_urls.txt', 'rw')
+for day_url in day_urls:
+    urlfile.write("%s\n" % day_url)
 
 # Create the article list
 article_urls = []
