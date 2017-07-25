@@ -1,3 +1,5 @@
+from ..Record import Record
+
 from lxml import html
 import requests
 
@@ -6,7 +8,14 @@ import sqlite3
 connection = sqlite3.connect('Newspaper_Records.db')
 cursor = connection.cursor()
 
+# Create Stabroek days table
 cursor.execute('CREATE TABLE IF NOT EXISTS stabroek_days (day TEXT)')
+
+# Create articles table
+labels = []
+for label in Record.header_db():
+    labels.append(label + ' TEXT')
+cursor.execute('CREATE TABLE IF NOT EXISTS articles ' + str(tuple(Record.header_db())))
 
 archive_url = 'https://www.stabroeknews.com/archive/'
 
@@ -30,7 +39,7 @@ def get_day_urls(memoize=True):
             continue
 
         # Filter out days that have already been processed
-        if memoize and len(cursor.execute('SELECT 1 FROM articles WHERE Link_to_story = ?', (day_url,)).fetchall()):
+        if memoize and len(cursor.execute('SELECT * FROM articles WHERE Link_to_story = ? LIMIT 1', (day_url,)).fetchall()):
             continue
 
         day_urls.append(day_url)
@@ -52,7 +61,25 @@ def get_article_urls(url, memoize=True):
 
         article_url = article.get('href')
 
-        if not (memoize and len(cursor.execute('SELECT 1 FROM articles WHERE Link_to_story = ?', (article_url,)).fetchall())):
+        if not (memoize and len(cursor.execute('SELECT * FROM articles WHERE Link_to_story = ? LIMIT 1', (article_url,)).fetchall())):
             article_urls.append(article_url)
 
     return article_urls
+
+
+def write_to_database(quantity):
+    # Create article list
+    for idx, day_url in enumerate(get_day_urls()):
+        print("Processing: " + day_url)
+        for article_url in get_article_urls(day_url):
+            Record(article_url).store_to_database()
+
+        # Prevent re-processing the day on reload
+        cursor.execute("INSERT INTO stabroek_days (day) VALUES (?)", (day_url,))
+
+        # Limit number of records to download
+        if quantity is not None and idx is quantity:
+            break
+
+        # Write to database after each day
+        connection.commit()

@@ -8,7 +8,7 @@ cursor = connection.cursor()
 class Record(object):
     def __init__(self, url, memoize=True):
 
-        selection = cursor.execute('SELECT 1 FROM articles WHERE Link_to_story = ?', (str(url),)).fetchall()
+        selection = cursor.execute('SELECT * FROM articles WHERE Link_to_story = ? LIMIT 1', (str(url),)).fetchall()
 
         if memoize and selection:
             # Data fields to fulfill
@@ -39,20 +39,20 @@ class Record(object):
             self.victim_age = entry[22]
             self.victim_name = entry[23]
             self.victim_gender = entry[24]
-            self.money = entry[23]
-            self.valuables = entry[24]
-            self.url = entry[25]
-            self.title = entry[26]
-            self.linkage = entry[27]
+            self.money = entry[25]
+            self.valuables = entry[26]
+            self.url = entry[27]
+            self.title = entry[28]
+            self.linkage = entry[29]
 
             # Additional data fields
-            self.text = entry[28]
-            self.tags = entry[29]
-            self.meta_keywords = entry[30]
-            self.authors = entry[31]
+            self.text = entry[30]
+            self.tags = entry[31]
+            self.meta_keywords = entry[32]
+            self.authors = entry[33]
 
             # Gleaned from nlp
-            self.keywords = entry[32]
+            self.keywords = entry[34]
 
         # Create new record with most fields unpopulated
         else:
@@ -141,7 +141,7 @@ class Record(object):
                 self.text, self.tags, self.meta_keywords, self.authors, self.keywords)
 
     def store_to_database(self):
-        if cursor.execute('SELECT 1 FROM articles WHERE Link_to_story = ?', (str(self.url),)).fetchall():
+        if cursor.execute('SELECT * FROM articles WHERE Link_to_story = ? LIMIT 1', (self.url,)).fetchall():
             assignment = ''
             for header, element in zip(self.header_db(), self.get_db_elements()):
                 assignment += str(header) + ' = ' + str(element) + ', '
