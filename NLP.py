@@ -3,24 +3,8 @@ from itertools import groupby
 from newspaper import Article
 
 
-def nlp_builtin(record):
-    # Prevent builtin nlp from being re-run
-    if not record.nlp_computed:
-        record.nlp_computed = True
-
-        # Download, parse process article
-        article = Article(record.url)
-        article.download()
-        article.parse()
-        article.nlp()
-
-        record.incident_summary = article.summary
-        record.keywords = article.keywords
-
-    return record
-
-
-def nlp_nltk(record):
+def nltk_ner(record):
+    """Named entity recognition via NLTK"""
     # Break text into words
     tokens = nltk.word_tokenize(record.text)
 
@@ -35,12 +19,13 @@ def nlp_nltk(record):
     IOB = nltk.chunk.tree2conlltags(tree)
 
     # Group proper nouns spread across multiple words
-    for tag, chunk in groupby(IOB, lambda x: x[1]):
-        if tag != "O":
-            print("%-12s" % tag, " ".join(w for w, t in chunk))
+    print()
+    print(record.url)
+    for tag, chunk in groupby(IOB, lambda x: x[2][2:]):
+        if tag != "":
+            print("%-12s" % tag, " ".join(w for w, t, x in chunk))
 
     return record
-
 
 
 def nlp_stanford(record):
@@ -51,3 +36,23 @@ def nlp_stanford(record):
     tagger = nltk.tag.StanfordNERTagger('english.all.3class.distsim.crf.ser.gz')
 
     tagger.tag(tokens)
+
+
+def newspaper_summary(record):
+    """Update the summary with representative sentences"""
+    # This function is inefficient, because it has to redownload and parse the article to make an Article object
+
+    # Prevent builtin nlp from being re-run
+    if not record.nlp_computed:
+        record.nlp_computed = True
+
+        # Download, parse process article
+        article = Article(record.url)
+        article.download()
+        article.parse()
+        article.nlp()
+
+        record.incident_summary = article.summary
+        record.keywords = article.keywords
+
+    return record

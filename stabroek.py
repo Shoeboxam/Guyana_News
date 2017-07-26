@@ -1,4 +1,4 @@
-from ..Record import Record
+from Record import Record
 
 from lxml import html
 import requests
@@ -39,7 +39,7 @@ def get_day_urls(memoize=True):
             continue
 
         # Filter out days that have already been processed
-        if memoize and len(cursor.execute('SELECT * FROM articles WHERE Link_to_story = ? LIMIT 1', (day_url,)).fetchall()):
+        if memoize and len(cursor.execute('SELECT * FROM articles WHERE url = ? LIMIT 1', (day_url,)).fetchall()):
             continue
 
         day_urls.append(day_url)
@@ -61,7 +61,7 @@ def get_article_urls(url, memoize=True):
 
         article_url = article.get('href')
 
-        if not (memoize and len(cursor.execute('SELECT * FROM articles WHERE Link_to_story = ? LIMIT 1', (article_url,)).fetchall())):
+        if not (memoize and len(cursor.execute('SELECT * FROM articles WHERE url = ? LIMIT 1', (article_url,)).fetchall())):
             article_urls.append(article_url)
 
     return article_urls
@@ -83,3 +83,4 @@ def write_to_database(quantity):
 
         # Write to database after each day
         connection.commit()
+

@@ -8,7 +8,7 @@ cursor = connection.cursor()
 class Record(object):
     def __init__(self, url, memoize=True):
 
-        selection = cursor.execute('SELECT * FROM articles WHERE Link_to_story = ? LIMIT 1', (str(url),)).fetchall()
+        selection = cursor.execute('SELECT * FROM articles WHERE url = ? LIMIT 1', (str(url),)).fetchall()
 
         if memoize and selection:
             # Data fields to fulfill
@@ -61,7 +61,7 @@ class Record(object):
             article.download()
             article.parse()
 
-            # Data fields to fulfill
+            # CSV fields
             self.identifier = article.publish_date.year
             self.location = None
             self.hijack_location = None
@@ -101,7 +101,7 @@ class Record(object):
             self.authors = str(article.authors)
 
             # Gleaned from nlp
-            self.keywords = str([])
+            self.keywords = None
 
     @staticmethod
     def header_csv():
@@ -123,13 +123,13 @@ class Record(object):
 
     @staticmethod
     def header_db():
-        return ('Identifier', 'Location', 'If Hijacking, location of crime',
-                'If hijacking_location where car/boat was found', 'Date_of_in', 'Date_repor', 'Incident_T',
-                'Incident_s', 'Primary_Incident_Type', 'Secondary_Incident_Type', 'Violent_NonV', 'Incident_Type',
-                'Weapon', 'Notes', 'Time of operation', 'Estimated Time of Incident', 'Primary_Mo',
-                'Suspect_occupation', 'Suspect_age', "Suspect's_name", "Suspect's_gender", 'Victim_Occupation',
-                'Victim_Age', "Victim's_name", "Victim's_gender", 'Money_', 'Valuables', 'Link_to_story', 'Title',
-                'More_detai', 'Fulltext', 'Tags', 'Keywords_Meta', 'Authors', 'Keywords')
+        return ('identifier', 'location', 'hijack_location', 'hijack_found', 'date_incident',
+                'date_reported', 'incident_tag', 'incident_summary', 'incident_type_primary',
+                'incident_type_secondary', 'violent', 'incident_type', 'weapon', 'notes',
+                'time_operation', 'time_incident', 'motive', 'suspect_occupation', 'suspect_age',
+                'suspect_name', 'suspect_gender', 'victim_occupation', 'victim_age',
+                'victim_name', 'victim_gender', 'money', 'valuables', 'url', 'title', 'linkage',
+                'text', 'tags', 'meta_keywords', 'authors', 'keywords')
 
     def get_db_elements(self):
         return (self.identifier, self.location, self.hijack_location, self.hijack_found, self.date_incident,
@@ -141,12 +141,15 @@ class Record(object):
                 self.text, self.tags, self.meta_keywords, self.authors, self.keywords)
 
     def store_to_database(self):
-        if cursor.execute('SELECT * FROM articles WHERE Link_to_story = ? LIMIT 1', (self.url,)).fetchall():
-            assignment = ''
-            for header, element in zip(self.header_db(), self.get_db_elements()):
-                assignment += str(header) + ' = ' + str(element) + ', '
-            cursor.execute("UPDATE articles SET " + assignment + " WHERE Link_to_story = ?", (str(self.url),))
+        elements = self.get_db_elements()
+        headers = self.header_db()
+
+        if cursor.execute('SELECT * FROM articles WHERE url = ? LIMIT 1', (self.url,)).fetchall():
+
+            sql = "UPDATE articles SET " + ', '.join([i + ' = ?' for i in headers]) + " WHERE url = ?"
+            arguments = (*elements, self.url)
+
+            cursor.execute(sql, arguments)
         else:
-            elements = self.get_db_elements()
             cursor.execute("INSERT INTO articles VALUES (" + "?, " * (len(elements) - 1) + "?)", (*elements,))
         connection.commit()
