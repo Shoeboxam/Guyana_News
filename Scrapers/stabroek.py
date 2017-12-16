@@ -91,7 +91,6 @@ def scrape(limit=None):
 
     # Create article list
     for day_idx, day_url in enumerate(get_day_urls()):
-        print()
 
         article_queue = Queue()
         article_urls = get_article_urls(day_url)
@@ -105,12 +104,28 @@ def scrape(limit=None):
         for proc in pool:
             proc.start()
 
-        while any([proc.is_alive() for proc in pool]):
+        print()
+        force_quit = False
+        while any([proc.is_alive() for proc in pool]) and not force_quit:
             # Increment status
             sys.stdout.write("\r\x1b[KCollecting: " + day_url + " " +
                              str(len(article_urls) - article_queue.qsize()) + '/' + str(len(article_urls)))
             sys.stdout.flush()
-            time.sleep(1)
+
+            time.sleep(0.5)
+
+            # Sometimes threads get hung on an eternal process, IE waiting on a download
+            if article_queue.empty():
+                time.sleep(3)
+                # Increment status
+                sys.stdout.write("\r\x1b[KCollecting: " + day_url + " " +
+                                 str(len(article_urls) - article_queue.qsize()) + '/' + str(len(article_urls)))
+                sys.stdout.flush()
+
+                if any([proc.is_alive() for proc in pool]):
+                    time.sleep(10)
+                    print(" (killed hung thread)", end="")
+                    force_quit = True
 
         for proc in pool:
             proc.terminate()
@@ -139,7 +154,7 @@ def download_process(write_queue, item_queue):
                 parse_article(write_queue, article_url)
                 success = True
             except ArticleException:
-                print("Exception downloading article: " + article_url)
+                print("Redownloading article: " + article_url)
 
             # Be nice to their servers
             time.sleep(1)
@@ -147,7 +162,15 @@ def download_process(write_queue, item_queue):
 
 def transaction_process(write_queue):
     while True:
-        cursor.execute(*write_queue.get())
+        success = False
+
+        while not success:
+            try:
+                cursor.execute(*write_queue.get())
+                success = True
+            except Exception as error:
+                print("\nCaught faulty database write: " + str(error))
+
         connection.commit()
 
 
