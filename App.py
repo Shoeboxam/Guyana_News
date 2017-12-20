@@ -1,10 +1,9 @@
-from Record import Record
-from stabroek import write_to_database
-import NLP
-
 import csv
 import os
 import sqlite3
+
+import NLP
+from Record import Record
 
 connection = sqlite3.connect('./Newspaper_Records.db')
 cursor = connection.cursor()

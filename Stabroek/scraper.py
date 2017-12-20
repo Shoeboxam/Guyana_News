@@ -123,7 +123,7 @@ def scrape(limit=None):
                 sys.stdout.flush()
 
                 if any([proc.is_alive() for proc in pool]):
-                    time.sleep(10)
+                    time.sleep(5)
                     print(" (killed hung thread)", end="")
                     force_quit = True
 
@@ -153,7 +153,7 @@ def download_process(write_queue, item_queue):
             try:
                 parse_article(write_queue, article_url)
                 success = True
-            except ArticleException:
+            except (ArticleException, sqlite3.OperationalError):
                 print("Redownloading article: " + article_url)
 
             # Be nice to their servers
@@ -168,6 +168,8 @@ def transaction_process(write_queue):
             try:
                 cursor.execute(*write_queue.get())
                 success = True
+            except sqlite3.OperationalError:
+                print("\nDatabase locked, re-executing.")
             except Exception as error:
                 print("\nCaught faulty database write: " + str(error))
 
