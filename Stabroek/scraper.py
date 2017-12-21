@@ -1,6 +1,7 @@
 import requests
 import sys
 import time
+import datetime
 
 from multiprocessing import Queue, Process, cpu_count
 
@@ -23,7 +24,8 @@ cursor.execute('CREATE TABLE IF NOT EXISTS stabroek (' +
                'authors TEXT, ' +
                'top_image TEXT, ' +
                'images TEXT, ' +
-               'movies TEXT)')
+               'movies TEXT, '
+               'publish_date DATE)')
 
 cursor.execute('CREATE TABLE IF NOT EXISTS stabroek_nlp (' +
                'url TEXT, ' +
@@ -61,7 +63,7 @@ def get_day_urls(memoize=True):
 
 
 # Returns the urls of every article in a day
-def get_article_urls(url, page=1, memoize=True):
+def get_article_urls(url, page=1):
     soup = bs4.BeautifulSoup(requests.get(url + '/page/' + str(page)).content, "lxml")
     article_urls = []
 
@@ -72,16 +74,16 @@ def get_article_urls(url, page=1, memoize=True):
     for article in article_list:
         article_url = article.h3.a['href']
 
-        if not memoize or not len(cursor.execute('SELECT * FROM stabroek WHERE url = ? LIMIT 1', (article_url,)).fetchall()):
+        if len(cursor.execute('SELECT url FROM stabroek WHERE url = ? LIMIT 1', (article_url,)).fetchall()) == 0:
             article_urls.append(article_url)
 
     if article_list:
-        article_urls.extend(get_article_urls(url, page=page+1, memoize=True))
+        article_urls.extend(get_article_urls(url, page=page+1))
 
     return article_urls
 
 
-def scrape(limit=None):
+def scrape_bulk(limit=None):
 
     # Store results from downloading threads via a single transaction thread
     # This fixes issues with concurrent database writes / timeouts
@@ -188,7 +190,8 @@ def parse_article(write_queue, article_url):
               ', '.join(article.authors),
               article.top_image,
               ', '.join(article.images),
-              ', '.join(article.movies))
+              ', '.join(article.movies),
+              get_date(article_url))
 
     record_nlp = (article_url,
                   article.summary,
@@ -203,20 +206,36 @@ def parse_article(write_queue, article_url):
               "authors=?, " \
               "top_image=?, " \
               "images=?, " \
-              "movies=?, WHERE url = ?"
+              "movies=?, " \
+              "date=?, WHERE url = ?"
 
         sql_nlp = "UPDATE stabroek_nlp SET " \
                   "url=?, " \
                   "summary=?, " \
                   "keywords=?, WHERE url = ?"
     else:
-        sql = "INSERT INTO stabroek VALUES (" + "?, " * 6 + "?)"
+        sql = "INSERT INTO stabroek VALUES (" + "?, " * 7 + "?)"
         sql_nlp = "INSERT INTO stabroek_nlp VALUES (?, ?, ?)"
 
     write_queue.put((sql, record))
     write_queue.put((sql_nlp, record_nlp))
 
 
+def get_date(url):
+    pieces = url.replace('https://www.stabroeknews.com/', '').split('/')
+
+    # Extract date from url
+    date_elements = []
+
+    for piece in pieces:
+        if piece.isdigit():
+            date_elements.append(int(piece))
+        if len(date_elements) == 3:
+            break
+
+    return datetime.date(*date_elements)
+
+
 if __name__ == '__main__':
-    scrape()
+    scrape_bulk()
     print(len(cursor.execute("SELECT * FROM stabroek").fetchall()))
