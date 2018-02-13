@@ -1,6 +1,12 @@
 import nltk
 from itertools import groupby
 
+# Only needs to be run once
+# nltk.download('punkt')
+# nltk.download('averaged_perceptron_tagger')
+# nltk.download('maxent_ne_chunker')
+# nltk.download('words')
+
 
 def nltk_ner(text):
     """Named entity recognition via NLTK"""
@@ -29,7 +35,7 @@ def nltk_ner(text):
             tags[label.lower()].append(match)
             # print("%-12s" % label, match)
 
-    print(tags)
+    return tags
 
 
 def nlp_stanford(record):
