@@ -24,7 +24,7 @@ cursor.execute('CREATE TABLE IF NOT EXISTS stabroek (' +
                'authors TEXT, ' +
                'top_image TEXT, ' +
                'images TEXT, ' +
-               'movies TEXT, '
+               'movies TEXT, ' +
                'publish_date DATE)')
 
 cursor.execute('CREATE TABLE IF NOT EXISTS stabroek_nlp (' +

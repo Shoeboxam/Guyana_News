@@ -1,12 +1,14 @@
 import csv
 import os
 import sqlite3
+import textwrap
 
 import NLP
-from Record import Record
 
 connection = sqlite3.connect('./Newspaper_Records.db')
 cursor = connection.cursor()
+# connection = sqlite3.connect('C:/Users/mike/Sources/Guyana_News/Newspaper_Records.db')
+# cursor = connection.cursor()
 
 
 def write_to_csv(quantity=None):
@@ -16,27 +18,22 @@ def write_to_csv(quantity=None):
 
     with open('./Summary_generated.csv', 'w', newline='') as outputfile:
         writer = csv.writer(outputfile)
-        writer.writerow(Record.header_csv())
+        writer.writerow([entry[0] for entry in cursor.execute("SELECT * FROM stabroek WHERE 1=2").description])
 
         limit = ""
         if quantity is not None:
             limit = " LIMIT " + str(quantity)
 
-        for url in cursor.execute("SELECT url FROM articles" + limit).fetchall():
-            writer.writerow(Record(url[0]).get_csv_elements())
+        for entries in cursor.execute("SELECT * FROM articles" + limit).fetchall():
+            writer.writerow(entries)
 
 
-def update_records(func, quantity=None):
-    """Pass each record in the database through a function and store it"""
-    limit = ""
-    if quantity is not None:
-        limit = " LIMIT " + str(quantity)
+def get_analysis():
+    url, fulltext = cursor.execute("SELECT url, fulltext FROM stabroek ORDER BY RANDOM() LIMIT 1").fetchone()
 
-    for url in cursor.execute("SELECT url FROM articles" + limit).fetchall():
-        func(Record(url[0])).store_to_database()
+    print()
+    print(url)
+    print('\n'.join(textwrap.wrap(fulltext, 80, break_long_words=False)))
+    NLP.nltk_ner(fulltext)
 
-# Write ten days worth of articles to the database
-# write_to_database(10)
-
-update_records(NLP.nltk_ner)
-
+get_analysis()
