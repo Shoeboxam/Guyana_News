@@ -11,8 +11,26 @@ cursor = connection.cursor()
 # connection = sqlite3.connect('C:/Users/mike/Sources/Guyana_News/Newspaper_Records.db')
 # cursor = connection.cursor()
 
-with open('./locations.json', 'r') as infile:
-    locations = json.load(infile)
+
+def decimal(text):
+    degrees, minutes = text.strip()[:-1].split(' ')
+    decimal = float(degrees) + float(minutes) / 60.
+
+    if degrees[-1] in ['W', 'S']:
+        decimal *= -1
+    return decimal
+
+
+locations = {}
+with open('./locations.csv', 'r') as infile:
+    reader = csv.reader(infile, delimiter=',')
+    for val in csv.reader(infile, delimiter=','):
+        print(val)
+        (city, lat, lon, region) = val
+        if city not in locations:
+            locations[city] = []
+
+        locations[city].append((decimal(lat), decimal(lon), region.strip()))
 
 dictionaries = {}
 for file in os.listdir('./dictionaries'):
@@ -52,17 +70,14 @@ def get_analysis():
         # print('\n'.join(textwrap.wrap(fulltext, 80, break_long_words=False)))
         # print(NLP.nltk_ner(fulltext))
 
-        locations = []
+        matched_locations = []
         crime_classes = []
-        for token in fulltext.lower().split(" "):
-            if token in locations:
-                locations.append(token)
 
-            for key in dictionaries:
-                if token in dictionaries[key]:
-                    crime_classes.append(key)
+        for city in locations.keys():
+            if city in fulltext:
+                matched_locations.append(city)
 
-        print("LOCATIONS: " + str(locations))
+        print("LOCATIONS: " + str(matched_locations))
         print("CRIME_CLASSES: " + str(crime_classes))
 
 get_analysis()
